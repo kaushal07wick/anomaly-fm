@@ -224,3 +224,18 @@ branded preview instead of a bare URL.
 **Note:** Open Graph prefers an *absolute* image URL. A comment in `index.html`
 flags swapping `og.png` for `https://<user>.github.io/<repo>/og.png` once the
 host is known, for the most reliable previews across all scrapers.
+
+---
+
+## CS-009 — Lock absolute og:image URL to the live host
+
+**What:** Set `og:image` / `twitter:image` to the absolute production URL now that
+the repo name is fixed: `https://kaushal07wick.github.io/anomaly-fm/`.
+
+- Replaced the relative `og.png` references (CS-008) with the absolute
+  `https://kaushal07wick.github.io/anomaly-fm/og.png`, and removed the reminder
+  comment.
+
+**Why:** Open Graph / Twitter scrapers resolve image URLs most reliably when
+absolute; guarantees the branded preview renders across Slack, iMessage,
+Twitter, Facebook, etc.
