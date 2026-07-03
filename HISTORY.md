@@ -205,3 +205,22 @@ sound with the Web Audio API, with the display tickering the events.
 
 **Why:** One `git remote add` + `git push` away from a live site; Pages then
 serves from `main` / root.
+
+---
+
+## CS-008 — Social preview image (og.png)
+
+**What:** Added a 1200×630 Open Graph / Twitter card so shared links render a
+branded preview instead of a bare URL.
+
+- `og.png` — the brand card: pixel "anomaly.fm" wordmark (teal `.fm`), the
+  tagline, the full frequency band with all eight stations (999 lit, needle on
+  it), and the teal dial. Rendered with headless Chrome from an HTML card using
+  the real Pixelify Sans font, so it matches the site exactly.
+- Re-enabled `og:image` / `twitter:image` (relative `og.png`) plus
+  `og:image:width/height` and upgraded `twitter:card` back to
+  `summary_large_image`.
+
+**Note:** Open Graph prefers an *absolute* image URL. A comment in `index.html`
+flags swapping `og.png` for `https://<user>.github.io/<repo>/og.png` once the
+host is known, for the most reliable previews across all scrapers.
