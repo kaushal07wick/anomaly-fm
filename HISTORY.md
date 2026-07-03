@@ -239,3 +239,26 @@ the repo name is fixed: `https://kaushal07wick.github.io/anomaly-fm/`.
 **Why:** Open Graph / Twitter scrapers resolve image URLs most reliably when
 absolute; guarantees the branded preview renders across Slack, iMessage,
 Twitter, Facebook, etc.
+
+---
+
+## CS-010 — DEEP SIGNAL reads headlines aloud (text-to-speech)
+
+**What:** Upgraded `404 DEEP SIGNAL` (Hacker News) from ambient ticks to a
+**hybrid** station: a tick per post, and every 4th headline is **read aloud** by
+the browser's built-in voice.
+
+- Added a reusable `speak()` to the audio engine using the Web Speech API
+  (`SpeechSynthesisUtterance`) — free, no backend, no key. Its volume tracks the
+  slider; pitch lowered slightly for a calmer announcer feel.
+- Reworked `runHN()` to pull from Algolia `search_by_date` (each item has a real
+  title) instead of `maxitem` (which only gave a count). New posts are queued and
+  played on a 2s pace so a burst doesn't fire at once; each shows on the ticker,
+  ticks, and every 4th is spoken.
+- Speech is cancelled on stop and on station-switch (`stopSources()` +
+  `feedCleanup`), so it never bleeds across stations.
+- Removed the local `hn-demo.html` prototype (was untracked; never committed).
+
+**Why:** The user wanted to hear the text, not just an abstract tone. Hybrid is
+the sweet spot — alive without becoming a chatterbox. Same mechanism can be
+switched on for other text stations (THE WIRE, THE FEED) later.

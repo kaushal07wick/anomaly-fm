@@ -36,7 +36,7 @@
     // --- SIGNAL bank (live, generative) ---
     { bank: 'signal', type: 'signal', freq: '013', name: 'TREMOR', tag: 'the planet, moving', feed: 'quake' },
     { bank: 'signal', type: 'signal', freq: '200', name: 'THE FEED', tag: 'the world shipping code', feed: 'github' },
-    { bank: 'signal', type: 'signal', freq: '404', name: 'DEEP SIGNAL', tag: 'the internet thinks', feed: 'hn' },
+    { bank: 'signal', type: 'signal', freq: '404', name: 'DEEP SIGNAL', tag: 'the internet, read aloud', feed: 'hn' },
     { bank: 'signal', type: 'signal', freq: '999', name: 'THE WIRE', tag: 'listening to humanity', feed: 'wiki' },
   ];
   const POS = [12.5, 37.5, 62.5, 87.5]; // needle stops across the scale, in %
@@ -147,6 +147,17 @@
   const rand = () => Math.random() * 2 - 1;
   const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
 
+  // Read text aloud with the browser's built-in voice (free, no backend).
+  // Volume tracks the slider; a lowered pitch gives it a calmer radio-announcer feel.
+  function speak(text) {
+    if (!('speechSynthesis' in window) || !text) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1;
+    u.pitch = 0.9;
+    u.volume = volLevel();
+    window.speechSynthesis.speak(u);
+  }
+
   // ==========================================================================
   // Display helpers
   // ==========================================================================
@@ -253,33 +264,45 @@
   }
 
   function runHN() {
-    let lastMax = null;
-    async function title(id) {
-      try {
-        const res = await fetch('https://hacker-news.firebaseio.com/v0/item/' + id + '.json', { cache: 'no-store' });
-        const it = await res.json();
-        if (it && it.title) ticker(it.title);
-        else if (it && it.text) ticker('comment · ' + it.text.replace(/<[^>]+>/g, '').slice(0, 70));
-      } catch (e) { /* ignore */ }
+    // Hybrid station: a tick per new post, and every 4th headline is read aloud.
+    // Titles come from Algolia (each item has a real title, unlike maxitem).
+    const seen = new Set();
+    const queue = [];
+    let primed = false;
+    let played = 0;
+
+    async function fetchItems() {
+      const res = await fetch('https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=20', { cache: 'no-store' });
+      const data = await res.json();
+      return data.hits || [];
     }
     async function poll() {
       try {
-        const res = await fetch('https://hacker-news.firebaseio.com/v0/maxitem.json', { cache: 'no-store' });
-        const maxId = await res.json();
+        const hits = await fetchItems();
         signalConnected();
-        if (lastMax === null) { lastMax = maxId; title(maxId); return; }
-        const delta = Math.max(0, maxId - lastMax);
-        const ticks = Math.min(delta, 8);
-        for (let i = 0; i < ticks; i += 1) {
-          setTimeout(() => { tone({ freq: PENTA[6 + (i % 3)], dur: 0.05, type: 'triangle', gain: 0.18, pan: rand() * 0.5, release: 0.08 }); bumpSignal(); }, i * 90);
-        }
-        if (delta > 0) title(maxId);
-        lastMax = maxId;
-      } catch (e) { /* keep last */ }
+        hits.slice().reverse().forEach((h) => {
+          if (!seen.has(h.objectID)) { seen.add(h.objectID); queue.push(h.title || h.story_title || '(untitled)'); }
+        });
+        if (!primed) { primed = true; if (!queue.length) ticker('quiet on the wire — waiting for the next post'); }
+      } catch (e) { /* keep last known */ }
     }
+    // Pace playback so a burst of new posts doesn't fire all at once.
+    const playId = setInterval(() => {
+      if (!queue.length) return;
+      const title = queue.shift();
+      tone({ freq: PENTA[6 + (hash(title) % 3)], dur: 0.05, type: 'triangle', gain: 0.18, pan: rand() * 0.5, release: 0.08 });
+      played += 1;
+      if (played % 4 === 0) speak(title);
+      bumpSignal();
+      ticker(title);
+    }, 2000);
     poll();
-    const id = setInterval(poll, 15000);
-    feedCleanup = () => clearInterval(id);
+    const pollId = setInterval(poll, 15000);
+    feedCleanup = () => {
+      clearInterval(playId);
+      clearInterval(pollId);
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    };
   }
 
   function runGitHub() {
@@ -344,6 +367,7 @@
     audio.removeAttribute('src');
     audio.load();
     if (feedCleanup) { try { feedCleanup(); } catch (e) { /* ignore */ } feedCleanup = null; }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   };
 
   function loadStream() {
